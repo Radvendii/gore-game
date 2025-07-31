@@ -12,28 +12,42 @@ const Transform: type = [2][2]f32; // 2x2 matrix
 
 const ObjData = struct {
     // TODO: make indices point into giant list of vertices instead
-    vertices: [4 * 2]f32,
-    indices: [6]u32,
+    vertices: []const f32,
+    indices: []const u32,
 };
 
 const obj_data: std.enums.EnumArray(Obj.Tag, ObjData) = .init(.{
     .player = .{
-        .vertices = .{
-            -0.2, -0.2,
-            0.2,  -0.2,
-            0.2,  0.2,
-            -0.2, 0.2,
+        .vertices = &.{
+            -0.2, -0.2, 1.0, 0.0, 0.0,
+            0.2,  -0.2, 1.0, 0.0, 0.0,
+            0.2,  0.2,  1.0, 0.0, 0.0,
+            -0.2, 0.2,  1.0, 0.0, 0.0,
         },
-        .indices = .{
+        .indices = &.{
             0, 1, 3,
             1, 2, 3,
         },
+    },
+    .enemy = .{
+        .vertices = &.{
+            -0.2, -0.1, 1.0, 1.0, 0.0,
+            0.2,  -0.1, 1.0, 1.0, 0.0,
+            0.0,  0.1,  1.0, 1.0, 0.0,
+        },
+        .indices = &.{ 0, 1, 2 },
+    },
+    .barrel = .{
+        .vertices = &.{},
+        .indices = &.{},
     },
 });
 
 const Obj = struct {
     const Tag = enum {
         player,
+        enemy,
+        barrel,
     };
     tag: Tag,
     t: Transform,
@@ -42,6 +56,13 @@ const Obj = struct {
 const objects: []const Obj = &.{
     .{
         .tag = .player,
+        .t = .{
+            .{ 1, 0 },
+            .{ 0, 1 },
+        },
+    },
+    .{
+        .tag = .enemy,
         .t = .{
             .{ 1, 0 },
             .{ 0, 1 },
@@ -112,6 +133,7 @@ fn m2_mul(m1: [2][2]f32, m2: [2][2]f32) [2][2]f32 {
 fn render() void {
     prog.use();
     const aPos = prog.attribLocation("aPos").?;
+    const aColor = prog.attribLocation("aColor").?;
     const transform = prog.uniformLocation("transform").?;
     const vao = gl.genVertexArray();
     vao.bind();
@@ -127,10 +149,12 @@ fn render() void {
     };
     for (objects) |obj| {
         const data = obj_data.get(obj.tag);
-        vbo.data(f32, &data.vertices, .dynamic_draw);
-        ebo.data(u32, &data.indices, .dynamic_draw);
-        gl.vertexAttribPointer(aPos, 2, .float, false, 2 * @sizeOf(f32), 0);
+        vbo.data(f32, data.vertices, .dynamic_draw);
+        ebo.data(u32, data.indices, .dynamic_draw);
+        gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
+        gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
         gl.enableVertexAttribArray(aPos);
+        gl.enableVertexAttribArray(aColor);
         const t = m2_mul(projection, obj.t);
         gl.uniformMatrix2fv(transform, false, &.{t});
 
