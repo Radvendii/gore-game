@@ -1,11 +1,55 @@
 const std = @import("std");
 const sdl = @import("sdl");
 const gl = @import("zgl");
+const shader_program = @import("shader_program.zig");
 
 var window: sdl.Window = undefined;
 var window_w: u32 = 640;
 var window_h: u32 = 480;
 var quit: bool = false;
+
+const Transform: type = [2][2]f32; // 2x2 matrix
+
+const ObjData = struct {
+    // TODO: make indices point into giant list of vertices instead
+    vertices: [4 * 2]f32,
+    indices: [6]u32,
+};
+
+const obj_data: std.enums.EnumArray(Obj.Tag, ObjData) = .init(.{
+    .player = .{
+        .vertices = .{
+            -0.2, -0.2,
+            0.2,  -0.2,
+            0.2,  0.2,
+            -0.2, 0.2,
+        },
+        .indices = .{
+            0, 1, 3,
+            1, 2, 3,
+        },
+    },
+});
+
+const Obj = struct {
+    const Tag = enum {
+        player,
+    };
+    tag: Tag,
+    t: Transform,
+};
+
+const objects: []const Obj = &.{
+    .{
+        .tag = .player,
+        .t = .{
+            .{ 1, 0 },
+            .{ 0, 1 },
+        },
+    },
+};
+
+var prog: gl.Program = undefined;
 
 pub fn main() !void {
     try sdl.init(.{
@@ -21,7 +65,7 @@ pub fn main() !void {
     try sdl.gl.setAttribute(.{ .doublebuffer = true });
 
     window = try sdl.createWindow(
-        "SDL.zig Basic Demo",
+        "Gore Game",
         .{ .centered = {} },
         .{ .centered = {} },
         window_w,
@@ -37,16 +81,62 @@ pub fn main() !void {
     // SEE: https://wiki.libsdl.org/SDL2/SDL_GL_GetProcAddress
     try initGL();
 
+    prog = try shader_program.init("./shaders/vert.glsl", "./shaders/frag.glsl");
+    gl.viewport(0, 0, window_w, window_h);
+
     while (!quit) {
         pollEvents();
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(.{ .color = true });
-        sdl.gl.swapWindow(window);
         render();
+        sdl.gl.swapWindow(window);
     }
 }
 
-fn render() void {}
+// TODO: get a real matrix type
+fn m2_mul(m1: [2][2]f32, m2: [2][2]f32) [2][2]f32 {
+    var ret: [2][2]f32 = .{
+        .{ 0, 0 },
+        .{ 0, 0 },
+    };
+    for (0..2) |i| {
+        for (0..2) |j| {
+            for (0..2) |k| {
+                ret[i][j] += m1[i][k] * m2[k][j];
+            }
+        }
+    }
+    return ret;
+}
+
+fn render() void {
+    prog.use();
+    const aPos = prog.attribLocation("aPos").?;
+    const transform = prog.uniformLocation("transform").?;
+    const vao = gl.genVertexArray();
+    vao.bind();
+    const vbo = gl.genBuffer();
+    vbo.bind(.array_buffer);
+    const ebo = gl.genBuffer();
+    ebo.bind(.element_array_buffer);
+
+    const aspect: f32 = @as(f32, @floatFromInt(window_w)) / @as(f32, @floatFromInt(window_h));
+    const projection: Transform = .{
+        .{ 1, 0 },
+        .{ 0, aspect },
+    };
+    for (objects) |obj| {
+        const data = obj_data.get(obj.tag);
+        vbo.data(f32, &data.vertices, .dynamic_draw);
+        ebo.data(u32, &data.indices, .dynamic_draw);
+        gl.vertexAttribPointer(aPos, 2, .float, false, 2 * @sizeOf(f32), 0);
+        gl.enableVertexAttribArray(aPos);
+        const t = m2_mul(projection, obj.t);
+        gl.uniformMatrix2fv(transform, false, &.{t});
+
+        gl.drawElements(.triangles, 6, .unsigned_int, 0);
+    }
+}
 
 fn pollEvents() void {
     while (sdl.pollEvent()) |ev| switch (ev) {
