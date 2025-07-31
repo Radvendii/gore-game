@@ -1,0 +1,20 @@
+.{
+    .name = .gore_game,
+    .version = "0.0.0",
+    .fingerprint = 0x4c22a3b5398ce33d, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.0-dev.1283+1fcaf90dd",
+    .dependencies = .{
+        .zgl = .{
+            .path = "./zgl",
+        },
+        .sdl = .{
+            .path = "./SDL.zig",
+        },
+    },
+    .paths = .{
+        // "",
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
