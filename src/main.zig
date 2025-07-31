@@ -5,6 +5,7 @@ const gl = @import("zgl");
 var window: sdl.Window = undefined;
 var window_w: u32 = 640;
 var window_h: u32 = 480;
+var quit: bool = false;
 
 pub fn main() !void {
     try sdl.init(.{
@@ -29,5 +30,49 @@ pub fn main() !void {
     );
     defer window.destroy();
 
-    sdl.delay(10 * 1000);
+    const context = try sdl.gl.createContext(window);
+    try context.makeCurrent(window);
+
+    // must be called after the context is current
+    // SEE: https://wiki.libsdl.org/SDL2/SDL_GL_GetProcAddress
+    try initGL();
+
+    while (!quit) {
+        pollEvents();
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(.{ .color = true });
+        sdl.gl.swapWindow(window);
+        render();
+    }
+}
+
+fn render() void {}
+
+fn pollEvents() void {
+    while (sdl.pollEvent()) |ev| switch (ev) {
+        .window => |wev| switch (wev.type) {
+            .size_changed => |size| {
+                window_w = @intCast(size.width);
+                window_h = @intCast(size.height);
+                gl.viewport(0, 0, window_w, window_h);
+            },
+            .close => {
+                quit = true;
+            },
+            else => {},
+        },
+        .key_down => |kev| switch (kev.keycode) {
+            .escape => quit = true,
+            else => {},
+        },
+        else => {},
+    };
+}
+
+fn getProcAddressWrapper(comptime _: type, symbolName: [:0]const u8) ?*const anyopaque {
+    return sdl.c.SDL_GL_GetProcAddress(symbolName);
+}
+
+fn initGL() !void {
+    try gl.loadExtensions(void, getProcAddressWrapper);
 }
