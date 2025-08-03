@@ -56,7 +56,6 @@ fn pollEvents() void {
             const my: f32 = -(@as(f32, @floatFromInt(mev.y)) / @as(f32, @floatFromInt(windower.window_h)) * 2 - 1);
             const px: f32 = game.objects[game.pi].x;
             const py: f32 = game.objects[game.pi].y;
-            std.debug.print("{}\n", .{.{ .x = mx, .y = my }});
             game.objects[game.pi].rot = std.math.atan2(my - py, mx - px);
         },
         .key_down => |kev| switch (kev.keycode) {

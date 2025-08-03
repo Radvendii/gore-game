@@ -3,21 +3,30 @@ const Obj = @import("object.zig");
 
 const Self = @This();
 
-const SPEED: f32 = 0.001;
+const SPEED: f32 = 0.008;
 
 objects: []Obj,
 pi: u32,
 
 pub fn init(allocator: std.mem.Allocator) !Self {
     const self: Self = .{
-        .objects = try allocator.alloc(Obj, 2),
+        .objects = try allocator.alloc(Obj, 3),
         .pi = 0,
     };
 
     errdefer allocator.free(self.objects);
 
     self.objects[self.pi] = .{ .tag = .player };
-    self.objects[1] = .{ .tag = .enemy };
+    self.objects[1] = .{
+        .tag = .enemy,
+        .x = 0.8,
+        .y = 0.8,
+    };
+    self.objects[2] = .{
+        .tag = .enemy,
+        .x = -0.8,
+        .y = 0.8,
+    };
     return self;
 }
 
@@ -29,5 +38,16 @@ pub fn tick(self: *Self) void {
     for (self.objects) |*obj| {
         obj.x += SPEED * obj.velocity.speed * std.math.cos(obj.velocity.dir);
         obj.y += SPEED * obj.velocity.speed * std.math.sin(obj.velocity.dir);
+        switch (obj.tag) {
+            .enemy => {
+                const to_player = std.math.atan2(self.objects[self.pi].y - obj.y, self.objects[self.pi].x - obj.x);
+                obj.rot = to_player;
+                obj.velocity = .{
+                    .speed = 0.1,
+                    .dir = to_player,
+                };
+            },
+            else => {},
+        }
     }
 }
