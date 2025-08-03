@@ -30,7 +30,7 @@
         pkg-config
         gdb
         zls
-        glslls
+        glsl_analyzer
 
         zig
         libGL
