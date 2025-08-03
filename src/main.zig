@@ -4,11 +4,17 @@ const gl = @import("zgl");
 const shader_program = @import("shader_program.zig");
 
 var window: sdl.Window = undefined;
-var window_w: u32 = 640;
-var window_h: u32 = 480;
+var window_w: u32 = 1640;
+var window_h: u32 = 1480;
 var quit: bool = false;
 
-const Transform: type = [2][2]f32; // 2x2 matrix
+const Transform: type = [3][3]f32; // 2x2 matrix
+
+fn print_transform(t: Transform) void {
+    std.debug.print("⌈ {} {} {} ⌉\n", .{ t[0][0], t[0][1], t[0][2] });
+    std.debug.print("⎪ {} {} {} ⎪\n", .{ t[1][0], t[1][1], t[1][2] });
+    std.debug.print("⌊ {} {} {} ⌋\n", .{ t[2][0], t[2][1], t[2][2] });
+}
 
 const ObjData = struct {
     // TODO: make indices point into giant list of vertices instead
@@ -19,10 +25,10 @@ const ObjData = struct {
 const obj_data: std.enums.EnumArray(Obj.Tag, ObjData) = .init(.{
     .player = .{
         .vertices = &.{
-            -0.2, -0.2, 1.0, 0.0, 0.0,
-            0.2,  -0.2, 1.0, 0.0, 0.0,
-            0.2,  0.2,  1.0, 0.0, 0.0,
-            -0.2, 0.2,  1.0, 0.0, 0.0,
+            -0.06, -0.06, 1.0, 0.0, 0.0,
+            0.06,  -0.06, 1.0, 0.0, 0.0,
+            0.06,  0.06,  1.0, 0.0, 0.0,
+            -0.06, 0.06,  1.0, 0.0, 0.0,
         },
         .indices = &.{
             0, 1, 3,
@@ -31,9 +37,9 @@ const obj_data: std.enums.EnumArray(Obj.Tag, ObjData) = .init(.{
     },
     .enemy = .{
         .vertices = &.{
-            -0.2, -0.1, 1.0, 1.0, 0.0,
-            0.2,  -0.1, 1.0, 1.0, 0.0,
-            0.0,  0.1,  1.0, 1.0, 0.0,
+            -0.06, -0.04, 1.0, 1.0, 0.0,
+            0.06,  -0.04, 1.0, 1.0, 0.0,
+            0.0,   0.04,  1.0, 1.0, 0.0,
         },
         .indices = &.{ 0, 1, 2 },
     },
@@ -50,29 +56,27 @@ const Obj = struct {
         barrel,
     };
     tag: Tag,
-    t: Transform,
+    x: f32 = 0,
+    y: f32 = 0,
+    rot: f32 = 0,
+    scale: f32 = 1,
 };
 
-const objects: []const Obj = &.{
-    .{
-        .tag = .player,
-        .t = .{
-            .{ 1, 0 },
-            .{ 0, 1 },
-        },
-    },
-    .{
-        .tag = .enemy,
-        .t = .{
-            .{ 1, 0 },
-            .{ 0, 1 },
-        },
-    },
-};
+var objects: []Obj = undefined;
 
 var prog: gl.Program = undefined;
 
 pub fn main() !void {
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer _ = gpa.deinit();
+    var allocator = gpa.allocator();
+
+    objects = try allocator.alloc(Obj, 2);
+    defer allocator.free(objects);
+
+    objects[0] = .{ .tag = .player };
+    objects[1] = .{ .tag = .enemy };
+
     try sdl.init(.{
         .video = true,
         .events = true,
@@ -111,18 +115,20 @@ pub fn main() !void {
         gl.clear(.{ .color = true });
         render();
         sdl.gl.swapWindow(window);
+        objects[0].x += 0.002;
     }
 }
 
 // TODO: get a real matrix type
-fn m2_mul(m1: [2][2]f32, m2: [2][2]f32) [2][2]f32 {
-    var ret: [2][2]f32 = .{
-        .{ 0, 0 },
-        .{ 0, 0 },
+fn t_mul(m1: Transform, m2: Transform) Transform {
+    var ret: Transform = .{
+        .{ 0, 0, 0 },
+        .{ 0, 0, 0 },
+        .{ 0, 0, 0 },
     };
-    for (0..2) |i| {
-        for (0..2) |j| {
-            for (0..2) |k| {
+    for (0..3) |i| {
+        for (0..3) |j| {
+            for (0..3) |k| {
                 ret[i][j] += m1[i][k] * m2[k][j];
             }
         }
@@ -139,26 +145,38 @@ fn render() void {
     vao.bind();
     const vbo = gl.genBuffer();
     vbo.bind(.array_buffer);
+    gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
     const ebo = gl.genBuffer();
     ebo.bind(.element_array_buffer);
+    gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
 
     const aspect: f32 = @as(f32, @floatFromInt(window_w)) / @as(f32, @floatFromInt(window_h));
     const projection: Transform = .{
-        .{ 1, 0 },
-        .{ 0, aspect },
+        .{ 1, 0, 0 },
+        .{ 0, aspect, 0 },
+        .{ 0, 0, 1 },
     };
     for (objects) |obj| {
         const data = obj_data.get(obj.tag);
         vbo.data(f32, data.vertices, .dynamic_draw);
         ebo.data(u32, data.indices, .dynamic_draw);
-        gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
-        gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
         gl.enableVertexAttribArray(aPos);
         gl.enableVertexAttribArray(aColor);
-        const t = m2_mul(projection, obj.t);
-        gl.uniformMatrix2fv(transform, false, &.{t});
 
-        gl.drawElements(.triangles, 6, .unsigned_int, 0);
+        const rot_t: Transform = .{
+            .{ std.math.cos(obj.rot), -std.math.sin(obj.rot), 0 },
+            .{ std.math.sin(obj.rot), std.math.cos(obj.rot), 0 },
+            .{ 0, 0, 1 },
+        };
+        const trans_t: Transform = .{
+            .{ 1, 0, obj.x },
+            .{ 0, 1, obj.y },
+            .{ 0, 0, 1 },
+        };
+        const t = t_mul(projection, t_mul(rot_t, trans_t));
+        gl.uniformMatrix3fv(transform, true, &.{t});
+
+        gl.drawElements(.triangles, data.indices.len, .unsigned_int, 0);
     }
 }
 

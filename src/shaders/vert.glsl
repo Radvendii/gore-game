@@ -3,12 +3,15 @@
 layout (location=0) in vec2 aPos;
 layout (location=1) in vec3 aColor;
 
-layout (location=2) uniform mat2x2 transform;
+layout (location=2) uniform mat3x3 transform;
 
 out vec3 color;
 
 void main() {
-    vec2 transformed = transform * aPos;
     color = aColor;
-    gl_Position = vec4(transformed, 0.0, 1.0);
+
+    vec3 transformed = transform * vec3(aPos, 1.0);
+    // normalize
+    // transformed.xy /= transformed.z;
+    gl_Position = vec4(transformed.xy, 0.0, 1.0);
 }
