@@ -35,6 +35,31 @@ pub fn build(b: *std.Build) void {
     // by passing `--prefix` or `-p`.
     b.installArtifact(exe);
 
+    { // shouldn't need to be this repetitive
+        const exe_check = b.addExecutable(.{
+            .name = "gore_game",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{},
+            }),
+        });
+
+        exe_check.linkSystemLibrary("opengl");
+        exe_check.linkLibC();
+
+        // TODO: update SDL.zig to use modern module system
+        const sdl_sdk_2 = sdl.init(b, .{});
+        sdl_sdk_2.link(exe_check, .dynamic, sdl.Library.SDL2);
+        exe_check.root_module.addImport("sdl", sdl_sdk.getWrapperModule());
+
+        exe_check.root_module.addImport("zgl", zgl.module("zgl"));
+
+        const check = b.step("check", "For zls");
+        check.dependOn(&exe_check.step);
+    }
+
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
     // such a dependency.
