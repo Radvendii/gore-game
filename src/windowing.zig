@@ -48,3 +48,7 @@ pub fn deinit(self: Self) void {
     self.window.destroy();
     sdl.quit();
 }
+
+pub fn swap(self: *const Self) void {
+    sdl.gl.swapWindow(self.window);
+}

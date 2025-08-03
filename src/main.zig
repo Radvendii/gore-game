@@ -32,10 +32,9 @@ pub fn main() !void {
 
     while (!quit) {
         pollEvents();
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(.{ .color = true });
+        renderer.clear();
         renderer.render(objects);
-        sdl.gl.swapWindow(windower.window);
+        windower.swap();
     }
 }
 

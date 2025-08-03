@@ -6,6 +6,9 @@ const Obj = @import("object.zig");
 
 const Self = @This();
 
+prog: gl.Program,
+aspect_ratio: f32 = 1.0,
+
 const Transform: type = [3][3]f32; // 3x3 matrix
 
 fn print_transform(t: Transform) void {
@@ -31,9 +34,6 @@ fn t_mul(m1: Transform, m2: Transform) Transform {
     return ret;
 }
 
-prog: gl.Program,
-aspect_ratio: f32 = 1.0,
-
 pub fn init(context: sdl.gl.Context) !Self {
     try initGL(context);
     return .{
@@ -44,6 +44,10 @@ pub fn init(context: sdl.gl.Context) !Self {
 pub fn resize(self: *Self, w: u32, h: u32) void {
     self.aspect_ratio = @as(f32, @floatFromInt(w)) / @as(f32, @floatFromInt(h));
     gl.viewport(0, 0, w, h);
+}
+pub fn clear(_: *const Self) void {
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clear(.{ .color = true });
 }
 
 pub fn render(self: *const Self, objects: []Obj) void {
