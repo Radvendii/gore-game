@@ -87,7 +87,7 @@ pub fn render(self: *const Self, objects: []Obj) void {
             .{ 0, 1, obj.y },
             .{ 0, 0, 1 },
         };
-        const t = t_mul(projection, t_mul(rot_t, trans_t));
+        const t = t_mul(projection, t_mul(trans_t, rot_t));
         gl.uniformMatrix3fv(transform, true, &.{t});
 
         gl.drawElements(.triangles, data.indices.len, .unsigned_int, 0);
