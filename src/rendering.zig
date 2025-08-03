@@ -1,4 +1,5 @@
 const std = @import("std");
+const sdl = @import("sdl");
 const gl = @import("zgl");
 const shader = @import("shader_program.zig");
 const Obj = @import("object.zig");
@@ -33,14 +34,16 @@ fn t_mul(m1: Transform, m2: Transform) Transform {
 prog: gl.Program,
 aspect_ratio: f32 = 1.0,
 
-pub fn init() !Self {
+pub fn init(context: sdl.gl.Context) !Self {
+    try initGL(context);
     return .{
         .prog = try shader.init("./shaders/vert.glsl", "./shaders/frag.glsl"),
     };
 }
 
-pub fn update_aspect_ratio(self: *Self, new_aspect_ratio: f32) void {
-    self.aspect_ratio = new_aspect_ratio;
+pub fn resize(self: *Self, w: u32, h: u32) void {
+    self.aspect_ratio = @as(f32, @floatFromInt(w)) / @as(f32, @floatFromInt(h));
+    gl.viewport(0, 0, w, h);
 }
 
 pub fn render(self: *const Self, objects: []Obj) void {
@@ -85,4 +88,15 @@ pub fn render(self: *const Self, objects: []Obj) void {
 
         gl.drawElements(.triangles, data.indices.len, .unsigned_int, 0);
     }
+}
+
+fn getProcAddressWrapper(comptime _: type, symbolName: [:0]const u8) ?*const anyopaque {
+    return sdl.c.SDL_GL_GetProcAddress(symbolName);
+}
+
+fn initGL(context: sdl.gl.Context) !void {
+    // must be called after the context is current
+    // SEE: https://wiki.libsdl.org/SDL2/SDL_GL_GetProcAddress
+    _ = context;
+    try gl.loadExtensions(void, getProcAddressWrapper);
 }
