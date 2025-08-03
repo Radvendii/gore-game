@@ -41,10 +41,11 @@ fn pollEvents() void {
     while (sdl.pollEvent()) |ev| switch (ev) {
         .window => |wev| switch (wev.type) {
             .size_changed => |size| {
-                _ = size;
-                // window_w = @intCast(size.width);
-                // window_h = @intCast(size.height);
-                // gl.viewport(0, 0, window_w, window_h);
+                const w: u32 = @intCast(size.width);
+                const h: u32 = @intCast(size.height);
+                windower.window_w = w;
+                windower.window_h = h;
+                renderer.resize(w, h);
             },
             .close => {
                 quit = true;
