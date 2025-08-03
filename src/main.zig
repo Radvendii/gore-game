@@ -1,8 +1,10 @@
 const std = @import("std");
-const sdl = @import("sdl");
+
 const gl = @import("zgl");
-const Render = @import("render.zig");
+const sdl = @import("sdl");
+
 const Obj = @import("object.zig");
+const Renderer = @import("render.zig");
 
 var window: sdl.Window = undefined;
 var window_w: u32 = 1640;
@@ -11,7 +13,7 @@ var quit: bool = false;
 
 var objects: []Obj = undefined;
 
-var render: Render = undefined;
+var renderer: Renderer = undefined;
 
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
@@ -53,8 +55,8 @@ pub fn main() !void {
     // SEE: https://wiki.libsdl.org/SDL2/SDL_GL_GetProcAddress
     try initGL();
 
-    render = try .init();
-    render.update_aspect_ratio(@as(f32, @floatFromInt(window_w)) / @as(f32, @floatFromInt(window_h)));
+    renderer = try .init();
+    renderer.update_aspect_ratio(@as(f32, @floatFromInt(window_w)) / @as(f32, @floatFromInt(window_h)));
 
     gl.viewport(0, 0, window_w, window_h);
 
@@ -62,7 +64,7 @@ pub fn main() !void {
         pollEvents();
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(.{ .color = true });
-        render.render(objects);
+        renderer.render(objects);
         sdl.gl.swapWindow(window);
     }
 }
