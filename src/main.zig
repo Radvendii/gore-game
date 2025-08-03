@@ -6,34 +6,33 @@ const sdl = @import("sdl");
 const Obj = @import("object.zig");
 const Renderer = @import("rendering.zig");
 const Windower = @import("windowing.zig");
+const Game = @import("game.zig");
 
 var quit: bool = false;
 
-var objects: []Obj = undefined;
-
 var renderer: Renderer = undefined;
 var windower: Windower = undefined;
+var game: Game = undefined;
 
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa.deinit();
-    var allocator = gpa.allocator();
-
-    objects = try allocator.alloc(Obj, 2);
-    defer allocator.free(objects);
-
-    objects[0] = .{ .tag = .player };
-    objects[1] = .{ .tag = .enemy };
+    const allocator = gpa.allocator();
 
     windower = try .init();
+    defer windower.deinit();
+
+    game = try .init(allocator);
+    defer game.deinit(allocator);
 
     renderer = try .init(windower.context);
     renderer.resize(windower.window_w, windower.window_h);
 
     while (!quit) {
         pollEvents();
+        game.tick();
         renderer.clear();
-        renderer.render(objects);
+        renderer.render(game.objects);
         windower.swap();
     }
 }
@@ -52,8 +51,24 @@ fn pollEvents() void {
             },
             else => {},
         },
+        .mouse_motion => |mev| {
+            const mx: f32 = (@as(f32, @floatFromInt(mev.x)) / @as(f32, @floatFromInt(windower.window_w)) * 2 - 1);
+            const my: f32 = -(@as(f32, @floatFromInt(mev.y)) / @as(f32, @floatFromInt(windower.window_h)) * 2 - 1);
+            const px: f32 = game.objects[game.pi].x;
+            const py: f32 = game.objects[game.pi].y;
+            std.debug.print("{}\n", .{.{ .x = mx, .y = my }});
+            game.objects[game.pi].rot = std.math.atan2(my - py, mx - px);
+        },
         .key_down => |kev| switch (kev.keycode) {
             .escape => quit = true,
+            .w => game.objects[game.pi].velocity = .{
+                .speed = 1.0,
+                .dir = game.objects[game.pi].rot,
+            },
+            else => {},
+        },
+        .key_up => |kev| switch (kev.keycode) {
+            .w => game.objects[game.pi].velocity.speed = 0,
             else => {},
         },
         else => {},

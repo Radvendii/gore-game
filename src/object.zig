@@ -10,6 +10,10 @@ x: f32 = 0,
 y: f32 = 0,
 rot: f32 = 0,
 scale: f32 = 1,
+velocity: struct {
+    speed: f32,
+    dir: f32,
+} = .{ .speed = 0, .dir = 0 },
 
 pub const Data = struct {
     // TODO: make indices point into giant list of vertices instead
