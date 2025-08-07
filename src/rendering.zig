@@ -41,6 +41,10 @@ pub fn init(context: sdl.gl.Context) !Self {
     };
 }
 
+pub fn deinit(self: *Self) void {
+    _ = self;
+}
+
 pub fn resize(self: *Self, w: u32, h: u32) void {
     self.aspect_ratio = @as(f32, @floatFromInt(w)) / @as(f32, @floatFromInt(h));
     gl.viewport(0, 0, w, h);

@@ -26,6 +26,7 @@ pub fn main() !void {
     defer game.deinit(allocator);
 
     renderer = try .init(windower.context);
+    defer renderer.deinit();
     renderer.resize(windower.window_w, windower.window_h);
 
     while (!quit) {
