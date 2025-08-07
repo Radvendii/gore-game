@@ -58,16 +58,12 @@ pub fn clear(_: *const Self) void {
 
 pub fn render(self: *const Self, objects: []Obj) void {
     self.prog.use();
-    // const aPos = self.prog.attribLocation("aPos").?;
-    // const aColor = self.prog.attribLocation("aColor").?;
     const transform = self.prog.uniformLocation("transform").?;
     const vao = gl.genVertexArray();
     vao.bind();
     const vbo = gl.genBuffer();
     vbo.bind(.array_buffer);
     vertexAttribPointersFromLayout(self.prog, Obj.Vertex);
-    // gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
-    // gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
     const ebo = gl.genBuffer();
     ebo.bind(.element_array_buffer);
 
@@ -81,8 +77,6 @@ pub fn render(self: *const Self, objects: []Obj) void {
         const data = Obj.data.get(obj.tag);
         vbo.data(Obj.Vertex, data.vertices, .dynamic_draw);
         ebo.data(u32, data.indices, .dynamic_draw);
-        // gl.enableVertexAttribArray(aPos);
-        // gl.enableVertexAttribArray(aColor);
 
         const rot_t: Transform = .{
             .{ std.math.cos(obj.rot), -std.math.sin(obj.rot), 0 },
