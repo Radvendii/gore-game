@@ -17,17 +17,22 @@ velocity: struct {
 
 pub const Data = struct {
     // TODO: make indices point into giant list of vertices instead
-    vertices: []const f32,
+    vertices: []const Vertex,
     indices: []const u32,
+};
+
+pub const Vertex = struct {
+    aPos: [2]f32,
+    aColor: [3]f32,
 };
 
 pub const data: std.enums.EnumArray(Tag, Data) = .init(.{
     .player = .{
         .vertices = &.{
-            -0.06, -0.06, 1.0, 0.0, 0.0,
-            0.06,  -0.06, 1.0, 0.0, 0.0,
-            0.06,  0.06,  1.0, 0.0, 0.0,
-            -0.06, 0.06,  1.0, 0.0, 0.0,
+            .{ .aPos = .{ -0.06, -0.06 }, .aColor = .{ 1.0, 0.0, 0.0 } },
+            .{ .aPos = .{ 0.06, -0.06 }, .aColor = .{ 1.0, 0.0, 0.0 } },
+            .{ .aPos = .{ 0.06, 0.06 }, .aColor = .{ 1.0, 0.0, 0.0 } },
+            .{ .aPos = .{ -0.06, 0.06 }, .aColor = .{ 1.0, 0.0, 0.0 } },
         },
         .indices = &.{
             0, 1, 3,
@@ -36,9 +41,9 @@ pub const data: std.enums.EnumArray(Tag, Data) = .init(.{
     },
     .enemy = .{
         .vertices = &.{
-            -0.04, -0.05, 1.0, 1.0, 0.0,
-            -0.04, 0.05,  1.0, 1.0, 0.0,
-            0.06,  0,     1.0, 1.0, 0.0,
+            .{ .aPos = .{ -0.04, -0.05 }, .aColor = .{ 1.0, 1.0, 0.0 } },
+            .{ .aPos = .{ -0.04, 0.05 }, .aColor = .{ 1.0, 1.0, 0.0 } },
+            .{ .aPos = .{ 0.06, 0 }, .aColor = .{ 1.0, 1.0, 0.0 } },
         },
         .indices = &.{ 0, 1, 2 },
     },

@@ -4,6 +4,8 @@ const gl = @import("zgl");
 const shader = @import("shader_program.zig");
 const Obj = @import("object.zig");
 
+const log = std.log.scoped(.rendering);
+
 const Self = @This();
 
 prog: gl.Program,
@@ -56,17 +58,18 @@ pub fn clear(_: *const Self) void {
 
 pub fn render(self: *const Self, objects: []Obj) void {
     self.prog.use();
-    const aPos = self.prog.attribLocation("aPos").?;
-    const aColor = self.prog.attribLocation("aColor").?;
+    // const aPos = self.prog.attribLocation("aPos").?;
+    // const aColor = self.prog.attribLocation("aColor").?;
     const transform = self.prog.uniformLocation("transform").?;
     const vao = gl.genVertexArray();
     vao.bind();
     const vbo = gl.genBuffer();
     vbo.bind(.array_buffer);
-    gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
+    vertexAttribPointersFromLayout(self.prog, Obj.Vertex);
+    // gl.vertexAttribPointer(aPos, 2, .float, false, 5 * @sizeOf(f32), 0);
+    // gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
     const ebo = gl.genBuffer();
     ebo.bind(.element_array_buffer);
-    gl.vertexAttribPointer(aColor, 2, .float, false, 5 * @sizeOf(f32), 2 * @sizeOf(f32));
 
     const projection: Transform = .{
         .{ 1, 0, 0 },
@@ -76,10 +79,10 @@ pub fn render(self: *const Self, objects: []Obj) void {
 
     for (objects) |obj| {
         const data = Obj.data.get(obj.tag);
-        vbo.data(f32, data.vertices, .dynamic_draw);
+        vbo.data(Obj.Vertex, data.vertices, .dynamic_draw);
         ebo.data(u32, data.indices, .dynamic_draw);
-        gl.enableVertexAttribArray(aPos);
-        gl.enableVertexAttribArray(aColor);
+        // gl.enableVertexAttribArray(aPos);
+        // gl.enableVertexAttribArray(aColor);
 
         const rot_t: Transform = .{
             .{ std.math.cos(obj.rot), -std.math.sin(obj.rot), 0 },
@@ -107,4 +110,47 @@ fn initGL(context: sdl.gl.Context) !void {
     // SEE: https://wiki.libsdl.org/SDL2/SDL_GL_GetProcAddress
     _ = context;
     try gl.loadExtensions(void, getProcAddressWrapper);
+}
+
+inline fn vertexAttribPointersFromLayout(prog: gl.Program, layout: type) void {
+    const normalized = false;
+    if (@typeInfo(layout) != .@"struct")
+        @compileError(std.fmt.comptimePrint("Attrib layout must be a struct, found '{s}'", .{@typeName(layout)}));
+
+    inline for (@typeInfo(layout).@"struct".fields) |field| {
+        if (@typeInfo(field.type) != .array)
+            @compileError(std.fmt.comptimePrint("Attrib must be an array, '{s}' is a '{}'", .{ field.name, @typeName(field.type) }));
+
+        const len = @typeInfo(field.type).array.len;
+
+        if (len > 4) @compileError(std.fmt.comptimePrint("Attrib size cannot be more than 4. '{s}' has len {}", .{ field.name, len }));
+
+        const child = std.meta.Child(field.type);
+        // TODO: figure out how these should actually be used
+        const attrib_type: gl.Type = ty: switch (@typeInfo(child)) {
+            .float => |f| {
+                switch (f.bits) {
+                    16 => break :ty .half_float,
+                    32 => break :ty .float,
+                    64 => break :ty .double,
+                    else => {},
+                }
+            },
+            else => @compileError(std.fmt.comptimePrint("Attrib types are highly restricted. '{s}' has disallowed type '{s}'", .{ field.name, @typeName(child) })),
+        };
+
+        if (prog.attribLocation(field.name)) |loc| {
+            gl.vertexAttribPointer(
+                loc,
+                len,
+                attrib_type,
+                normalized,
+                @sizeOf(layout),
+                @offsetOf(layout, field.name),
+            );
+            gl.enableVertexAttribArray(loc);
+        } else {
+            log.err("vertex attribute '{s}' not found in shader program", .{field.name});
+        }
+    }
 }
